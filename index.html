@@ -238,6 +238,27 @@
     border:1px dashed var(--line);border-radius:8px;font-family:'IBM Plex Mono';font-size:13px;
   }
 
+  /* ===== PAGINACIÓN ===== */
+  .pagination{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    margin-top:32px;flex-wrap:wrap;
+  }
+  .pagination .btn-page{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'IBM Plex Mono';font-size:12px;font-weight:600;
+    text-transform:uppercase;letter-spacing:0.06em;
+    padding:10px 18px;border-radius:4px;border:1.5px solid var(--line);
+    background:var(--asphalt-2);color:var(--concrete-dim);
+    cursor:pointer;transition:border-color .15s,color .15s;
+  }
+  .pagination .btn-page:hover:not(:disabled){border-color:var(--yellow);color:var(--yellow);}
+  .pagination .btn-page:disabled{opacity:.3;cursor:not-allowed;}
+  .pagination .page-info{
+    font-family:'IBM Plex Mono';font-size:12px;color:var(--concrete-dim);
+    padding:0 8px;
+  }
+  .pagination .page-info b{color:var(--yellow);}
+
   /* ===== CTA RECLUTADOR/TRABAJADOR strip ===== */
   .strip{
     display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:0;
@@ -636,14 +657,33 @@ function inicializarUI(){
   resultFilters.textContent = 'Sin filtros aplicados';
 }
 
+const POR_PAGINA = 10;
+let paginaActual = 1;
+let listaActual  = [];
+
 function render(list){
+  listaActual  = list;
+  paginaActual = 1;
+  renderPagina();
+}
+
+function renderPagina(){
   cardsGrid.innerHTML = '';
-  resultCount.textContent = list.length;
-  if(list.length === 0){
+  resultCount.textContent = listaActual.length;
+
+  if(listaActual.length === 0){
     cardsGrid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Sin resultados — ajusta tus filtros, no hay trabajadores con esa combinación todavía.</div>`;
+    renderPaginacion(0);
     return;
   }
-  list.forEach((t, idx)=>{
+
+  const totalPaginas = Math.ceil(listaActual.length / POR_PAGINA);
+  paginaActual = Math.max(1, Math.min(paginaActual, totalPaginas));
+
+  const inicio = (paginaActual - 1) * POR_PAGINA;
+  const fin    = Math.min(inicio + POR_PAGINA, listaActual.length);
+
+  listaActual.slice(inicio, fin).forEach((t)=>{
     const realIndex = trabajadores.indexOf(t);
     const card = document.createElement('div');
     card.className = 'card';
@@ -668,6 +708,42 @@ function render(list){
       </div>
     `;
     cardsGrid.appendChild(card);
+  });
+
+  renderPaginacion(totalPaginas);
+}
+
+function renderPaginacion(totalPaginas){
+  // Reutilizar o crear el contenedor de paginación
+  let pag = document.getElementById('paginacion');
+  if(!pag){
+    pag = document.createElement('div');
+    pag.id = 'paginacion';
+    pag.className = 'pagination';
+    cardsGrid.parentNode.insertBefore(pag, cardsGrid.nextSibling);
+  }
+
+  if(totalPaginas <= 1){ pag.innerHTML = ''; return; }
+
+  pag.innerHTML = `
+    <button class="btn-page" id="btnAnterior" ${paginaActual===1?'disabled':''}>← Anterior</button>
+    <span class="page-info">Página <b>${paginaActual}</b> de <b>${totalPaginas}</b> · <b>${listaActual.length}</b> resultado${listaActual.length!==1?'s':''}</span>
+    <button class="btn-page" id="btnSiguiente" ${paginaActual===totalPaginas?'disabled':''}>Siguiente →</button>
+  `;
+
+  document.getElementById('btnAnterior').addEventListener('click', ()=>{
+    if(paginaActual > 1){
+      paginaActual--;
+      renderPagina();
+      document.getElementById('buscador').scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  });
+  document.getElementById('btnSiguiente').addEventListener('click', ()=>{
+    if(paginaActual < totalPaginas){
+      paginaActual++;
+      renderPagina();
+      document.getElementById('buscador').scrollIntoView({behavior:'smooth', block:'start'});
+    }
   });
 }
 
